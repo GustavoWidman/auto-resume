@@ -1,0 +1,41 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[left=0.5in, right=0.5in, top=0.5in, bottom=0.5in]{geometry}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+
+\titleformat{\section}{\large\bfseries\uppercase}{}{0em}{}[\titlerule]
+\titlespacing{\section}{0pt}{12pt}{6pt}
+
+\begin{document}
+
+% --- HEADER ---
+\begin{center}
+    {\Huge \textbf{<<NAME>>}} \\ \vspace{4pt}
+    \small
+    <<CITY>>, <<COUNTRY>> <<HEADER>>
+\end{center}
+
+% --- EDUCATION ---
+\section{<<EDUCATION_HEADER>>}
+
+<<EDUCATION>>
+
+% --- SKILLS ---
+\section{<<SKILLS_HEADER>>}
+
+<<SKILLS>>
+
+% --- EXPERIENCE ---
+\section{<<EXPERIENCE_HEADER>>}
+
+<<EXPERIENCE>>
+
+% --- PROJECTS ---
+\section{<<PROJECTS_HEADER>>}
+
+<<PROJECTS>>
+
+\end{document}

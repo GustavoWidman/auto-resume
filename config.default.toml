@@ -1,0 +1,24 @@
+[config.resume]
+full_name = "Your Full Name"
+country = "Your Country"
+city = "Your City"
+email = "your.email@example.com"
+phone = "+55 (11) 99999-9999"
+linkedin = "https://linkedin.com/in/yourprofile"
+github = "https://github.com/yourprofile"
+site = "https://yoursite.com"
+
+# OPTIONAL: Context for the LLM to expand upon
+# education_context = "Brief summary of your education background"
+# experience_context = "Brief summary of professional experience not on GitHub"
+# skills_context = "Core competencies and domain expertise"
+
+[config.github]
+username = "YourGitHubUsername"  # Your GitHub username (repositories must be public)
+token = "ghp_..."                 # OPTIONAL: GitHub PAT token to increase rate limits
+
+[config.llm]
+api_key = "YOUR_GEMINI_API_KEY"  # Gemini API key for resume generation
+# model = "gemini-2.0-flash-exp"   # OPTIONAL: Default is gemini-2.0-flash-exp
+# endpoint = "https://..."         # OPTIONAL: Default is Gemini API endpoint (supports custom mirrors)
+# max_retries = 3                  # OPTIONAL: Maximum number of API retries on failure (default: 3)

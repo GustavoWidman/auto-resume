@@ -1,0 +1,184 @@
+You are helping generate a highly optimized resume section for an ATS-beating professional resume.
+
+## Candidate Profile
+**Name:** {candidate_name}
+
+## Target Job Posting
+**Position:** {job_title}
+**Company:** {job_company}
+**Job Description:**
+{job_description}
+
+## Candidate's GitHub Projects (ONLY source for projects section - with engagement metrics)
+{github_repos}
+
+**Selection Criteria:**
+- Prioritize repos with high importance scores
+- Consider repository maintenance status: prefer recently updated repos (last_updated year is recent)
+- Avoid abandoned or unfinished projects (repos not updated in 2+ years, unless they represent completed work)
+- Consider job relevance: if job needs Node.js and candidate has Node repos, use those even if Rust repos score higher
+- Match project descriptions to job requirements and domain
+- Select 3-5 most relevant, actively maintained (or recently completed) projects based on BOTH metric score AND job fit
+
+## Candidate's Skill Context (for AI expansion and ATS matching)
+{skills_context}
+
+## Candidate's Education Context (for background only)
+{education_context}
+
+## Candidate's Professional Experience Context
+{experience_context}
+
+## Output Language
+{language}
+
+## Task: Generate ATS-Optimized Resume Sections
+
+You are an expert resume strategist specializing in beating Applicant Tracking Systems (ATS) while maintaining authenticity. Your primary goals are:
+
+1. **ATS Beat:** Extract and highlight keywords from the job description
+2. **Authentic:** Only use real skills and projects from the candidate's GitHub
+3. **Quantifiable:** Include metrics, numbers, and measurable achievements
+4. **Strategic:** Reorganize skills and projects by job relevance, not chronology
+
+### Guidelines:
+
+**For Skills Section:**
+- Organize skills into categories that mirror the job description (e.g., if job requires "Back-end: Python, Go", create that exact category)
+- Each skill must exist in the candidate's GitHub profile, portfolio, or resume context
+- Include technical depth: specify versions, frameworks, tools where applicable
+- Use industry terminology that matches the job posting
+- Prioritize hard skills over soft skills
+- Maximum 5-6 skill categories, maximum 4-5 items per category
+
+**For Projects Section:**
+- ONLY include projects from the GitHub list provided
+- Rank by importance score (higher scores = higher priority)
+- Each project MUST be real and linked to GitHub repository
+- Project title format MUST be: "Project Name [Primary Language]"
+  Examples: "syncr [Go]", "rinha-de-backend [Rust]", "nix [Nix]", "1 Billion Row Challenge [Rust]"
+  **CRITICAL: ONLY use the language shown in brackets [like this] - do NOT infer or hallucinate project languages**
+  **If a project's language is provided in the GitHub list, use that ONLY. If unknown, use [Unknown] - never guess**
+- Each project MUST have ONLY ONE item (achievement/description)
+- Keep the single item brief: 1 line maximum, focusing on core purpose or most important feature
+- Do NOT include separate description field
+- Select 3-5 most impressive projects based on job relevance
+
+**ATS Best Practices:**
+- Use exact keywords from job description
+- Front-load the most important skills
+- Use clear section headers and consistent formatting
+- Include specific technologies, languages, and tools by name
+- Avoid creative formatting, graphics, or unusual characters
+- Numbers and percentages boost ATS scores (include when possible)
+
+**Language Handling:**
+- All output in {language}
+- Maintain professional terminology in {language}
+- Ensure consistent tense and voice
+
+### Critical Requirements:
+
+1. **Do NOT hallucinate or fabricate:**
+   - Every skill must be verifiable from GitHub or provided context
+   - Every project must be from the GitHub list provided
+   - Do not create fake achievements or experiences
+
+2. **Match job requirements exactly:**
+   - If job lists specific technologies, include them if candidate has them
+   - If job mentions domain experience, connect to relevant projects
+   - Keywords from job description must appear naturally in output
+
+3. **Respect the provided data:**
+   - GitHub repos with higher importance scores are more impressive
+   - Use project links provided exactly as given
+   - Filter out forked or archived repositories
+
+## Output Format
+
+Respond ONLY with valid JSON matching this exact structure:
+
+{
+  "skills_by_category": [
+    {
+      "category": "Category Name (must match job requirements)",
+      "items": ["skill1", "skill2", "skill3"]
+    }
+  ],
+  "projects": [
+    {
+      "title": "Project Name (Technology/Language)", # use parentheses, not brackets!
+      "link": "https://github.com/...",
+      "items": [
+        "Single brief line describing core purpose or key feature"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "University/Institution Name",
+      "degree": "Degree Type (e.g., Bachelor of Computer Engineering, not Bachelor of Engineering in Computer Engineering)",
+      "location": "City, State Code (e.g., São Paulo, SP or Austin, TX)",
+      "date": "Mon YYYY (e.g., Dec 2024)",
+      "accomplishments": [
+        "Brief achievement (one short phrase, max 10-15 words)",
+        "Another accomplishment if applicable",
+        "Maximum 3 bullet points"
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "company": "Company Name",
+      "position": "Job Title",
+      "location": "Remote, or City, State Code (e.g., São Paulo, SP or Austin, TX)",
+      "date": "Mon YYYY – Present or Mon YYYY – Mon YYYY",
+      "accomplishments": [
+        "Brief achievement, e.g., Architected reproducible infrastructure using **NixOS**, reducing drift to zero",
+        "Keep each to 1 line max (max 15 words per item)",
+        "2-5 concise items total, focused on target job requirements"
+      ]
+    }
+  ]
+}
+
+### Special Instructions for Education:
+- Use concise degree names: "Bachelor of Computer Engineering" not "Bachelor of Engineering in Computer Engineering"
+- Date format: "Mon YYYY" (e.g., "Dec 2024") - include month and year
+- Accomplishments are 2-3 brief highlights (max 10-15 words each, single line)
+- Only use accomplishments that the candidate has explicitly mentioned
+
+### Special Instructions for Professional Experience:
+- **CRITICAL: ONLY include experience explicitly provided in the experience context**
+- **Do NOT add, invent, or infer any technologies, languages, or accomplishments not explicitly mentioned in the context**
+- **Do NOT hallucinate or fabricate: if it's not in the context, do NOT include it**
+  - WRONG: Adding "Rust" when context only mentions "React/TypeScript and .NET/C#"
+  - WRONG: Making up "five years" if context says specific years
+  - CORRECT: Use ONLY the exact technologies and details from the context
+- Translate job titles/positions to {language} (e.g., "President" → "Presidente", "CTO" → "CTO" (stays same), "Developer" → "Desenvolvedor" in Portuguese)
+- Date format: "Mon YYYY – Present" (e.g., "Apr 2025 – Present") or "Mon YYYY – Mon YYYY" if concluded
+- Location format: "Remote" OR "City, State Code" (e.g., "São Paulo, SP", "Austin, TX"), NOT "City, Country"
+- **CRITICAL: All accomplishments MUST be in FIRST PERSON ONLY**
+  - In English: "Architected", "Led", "Implemented", "Optimized" (these implicitly mean "I did")
+    - WRONG: "I architected" (do NOT include "I" prefix - this is redundant and verbose)
+    - WRONG: "I led" (do NOT prefix with "I")
+    - CORRECT: "Architected reproducible infrastructure" (action verb implicitly means "I did")
+    - CORRECT: "Led multiple pentesting operations" (action verb implicitly means "I did")
+  - In Portuguese: Use FIRST PERSON verb conjugation (Arquitetei, Liderei, Implementei, Otimizei)
+    - WRONG: "Arquitetou" (third person - he/she architected)
+    - WRONG: "Liderou" (third person - he/she led)
+    - WRONG: "Otimizou" (third person - he/she optimized)
+    - WRONG: "Eu arquitetei" (do NOT include "Eu" - it's redundant)
+    - WRONG: "Eu liderei" (do NOT include "Eu" prefix)
+    - CORRECT: "Arquitetei infraestrutura" (first person verb conjugation implicitly means "I")
+    - CORRECT: "Liderei múltiplas operações" (first person verb conjugation implicitly means "I")
+- Use markdown bold **text** VERY sparingly - only bold 1 key technology or metric per entry, NOT the first word
+- Do NOT bold the first word of accomplishments (e.g., do NOT use "**Architected**", just write "Architected")
+- Bold ONLY when highlighting a specific technology name or important metric (and ONLY if that technology is mentioned in the context)
+- Each accomplishment MUST be 1 line maximum (max 15 words per item)
+- 2-5 accomplishments per experience entry, starting with most impressive
+- **EXTRACT accomplishments DIRECTLY from the experience context provided** - use the candidate's own words where possible
+- Do NOT create or invent new accomplishments - restructure what's provided, don't fabricate
+- Example: "Architected reproducible infrastructure using **NixOS**, reducing deployment drift to near-zero"
+
+CRITICAL: Output ONLY the JSON. No markdown, no explanations, no additional text. The JSON must be valid and parseable.
