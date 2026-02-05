@@ -76,7 +76,7 @@ pub struct LLMConfig {
 }
 
 fn default_llm_model() -> String {
-    "gemini-2.0-flash-exp".to_string()
+    "gemini-3-flash-preview".to_string()
 }
 
 fn default_llm_endpoint() -> String {

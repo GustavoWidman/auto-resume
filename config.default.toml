@@ -19,6 +19,6 @@ token = "ghp_..."                 # OPTIONAL: GitHub PAT token to increase rate 
 
 [config.llm]
 api_key = "YOUR_GEMINI_API_KEY"  # Gemini API key for resume generation
-# model = "gemini-2.0-flash-exp"   # OPTIONAL: Default is gemini-2.0-flash-exp
+# model = "gemini-3-flash-preview"   # OPTIONAL: Default is gemini-3-flash-preview
 # endpoint = "https://..."         # OPTIONAL: Default is Gemini API endpoint (supports custom mirrors)
 # max_retries = 3                  # OPTIONAL: Maximum number of API retries on failure (default: 3)
