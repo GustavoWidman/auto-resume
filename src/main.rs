@@ -50,8 +50,10 @@ async fn main() -> Result<()> {
         config.llm.max_retries,
     );
     let job_description = agent.clean_job_description(&job_description).await?;
-    info!("job description processed successfully");
-    debug!("job description: {:#?}", job_description);
+    info!(
+        "job description processed successfully:\nTitle: {}\nDescription: {}\nRequirements: {}",
+        job_description.title, job_description.description, job_description.requirements
+    );
 
     info!("ranking repositories based on job requirements");
     let ranked_repos = agent
