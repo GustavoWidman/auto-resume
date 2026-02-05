@@ -1,7 +1,9 @@
 use std::path::Path;
 
 use eyre::Result;
-use log::info;
+use log::{info, warn};
+
+use crate::utils::cli::Args;
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -15,7 +17,7 @@ pub struct JobDescription {
 pub struct JobScraper;
 
 impl JobScraper {
-    pub async fn from_url(url: &str) -> Result<JobDescription> {
+    pub async fn from_url(url: &str) -> Result<String> {
         info!("fetching job description from: {}", url);
 
         let client = reqwest::Client::new();
@@ -26,103 +28,29 @@ impl JobScraper {
             .await?;
 
         let html = response.text().await?;
-        let description = Self::parse_html(&html)?;
 
-        info!("successfully extracted job description");
-        Ok(description)
+        info!("successfully extracted job description html");
+
+        Ok(html)
     }
 
-    pub async fn from_file(path: &Path) -> Result<JobDescription> {
+    pub async fn from_file(path: &Path) -> Result<String> {
         info!("reading job description from file: {}", path.display());
 
-        let content = tokio::fs::read_to_string(path).await?;
-        Ok(JobDescription {
-            title: String::from("Job Description"),
-            company: None,
-            description: content.clone(),
-            requirements: content,
-        })
+        tokio::fs::read_to_string(path).await.map_err(Into::into)
     }
+}
 
-    fn parse_html(html: &str) -> Result<JobDescription> {
-        let description = Self::extract_text_from_html(html);
+pub async fn get_job_description(args: &Args) -> Result<String> {
+    if let Some(ref url) = args.job_url {
+        JobScraper::from_url(url).await
+    } else if let Some(ref file) = args.job_file {
+        JobScraper::from_file(file).await
+    } else {
+        warn!("no job description provided, using generic software engineer template");
 
-        let title = Self::extract_job_title(html).unwrap_or_else(|| "Unknown Position".to_string());
-        let company = Self::extract_company_name(html);
-        let requirements = Self::extract_requirements(html).unwrap_or_else(|| description.clone());
-
-        Ok(JobDescription {
-            title,
-            company,
-            description,
-            requirements,
-        })
-    }
-
-    fn extract_text_from_html(html: &str) -> String {
-        html.lines()
-            .map(|line| {
-                line.replace("<[^>]+>", "")
-                    .replace("&lt;", "<")
-                    .replace("&gt;", ">")
-                    .replace("&amp;", "&")
-                    .replace("&quot;", "\"")
-                    .replace("&#39;", "'")
-                    .trim()
-                    .to_string()
-            })
-            .filter(|line| !line.is_empty())
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-
-    fn extract_job_title(html: &str) -> Option<String> {
-        let patterns = vec![
-            r#"<h1[^>]*>([^<]+)</h1>"#,
-            r#"<meta property="og:title" content="([^"]+)"#,
-            r#"<title>([^<]+)</title>"#,
-        ];
-
-        for pattern in patterns {
-            if let Ok(re) = regex::Regex::new(pattern)
-                && let Some(caps) = re.captures(html)
-                && let Some(title) = caps.get(1)
-            {
-                return Some(title.as_str().to_string());
-            }
-        }
-        None
-    }
-
-    fn extract_company_name(html: &str) -> Option<String> {
-        let patterns = vec![
-            r#"<meta property="og:site_name" content="([^"]+)"#,
-            r#"company[^>]*>([^<]+)<"#,
-        ];
-
-        for pattern in patterns {
-            if let Ok(re) = regex::Regex::new(pattern)
-                && let Some(caps) = re.captures(html)
-                && let Some(company) = caps.get(1)
-            {
-                return Some(company.as_str().to_string());
-            }
-        }
-        None
-    }
-
-    fn extract_requirements(html: &str) -> Option<String> {
-        let patterns =
-            vec![r#"(?i)(requirements|qualifications|skills|must-haves?)[:\s]*([^<]{100,})"#];
-
-        for pattern in patterns {
-            if let Ok(re) = regex::Regex::new(pattern)
-                && let Some(caps) = re.captures(html)
-                && let Some(req) = caps.get(2)
-            {
-                return Some(req.as_str().to_string());
-            }
-        }
-        None
+        Ok(
+            "Software Engineer position focused on building scalable systems and solving complex technical challenges. Experience with modern software development practices, strong problem-solving skills, and collaborative mindset.".to_string()
+        )
     }
 }

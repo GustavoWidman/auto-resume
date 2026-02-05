@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use clap::Parser;
 use log::LevelFilter;
 
+use crate::latex::assembler::ResumeLanguage;
+
 #[derive(Parser, Debug)]
 #[command(name = "auto-resume")]
 #[command(about = "Generate resumes tailored to job postings using GitHub data and AI", long_about = None)]
@@ -21,11 +23,15 @@ pub struct Args {
 
     /// Resume language: en (English) or pt (Portuguese)
     #[arg(short, long, value_name = "LANG", default_value = "pt")]
-    pub language: String,
+    pub language: ResumeLanguage,
 
     /// Output PDF file path
     #[arg(short, long, value_name = "FILE", default_value = "resume.pdf")]
     pub output: PathBuf,
+
+    /// Enable saving intermediate LaTeX file
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    pub latex: bool,
 
     /// Sets the logger's verbosity level
     #[arg(short, long, value_name = "VERBOSITY", default_value_t = LevelFilter::Info)]

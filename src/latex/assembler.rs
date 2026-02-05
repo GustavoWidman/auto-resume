@@ -15,7 +15,7 @@ static LOCALE_MAP_PT: [(&str, &str); 4] = [
     ("PROJECTS_HEADER", "Projetos e Performance"),
 ];
 
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub enum ResumeLanguage {
     #[default]
     English,
@@ -188,6 +188,24 @@ impl LatexResumeAssembler {
                 } else {
                     result.push_str("**");
                     result.push_str(&Self::escape_latex(&bold_text));
+                }
+            } else if c == '`' {
+                let mut code_text = String::new();
+                let mut found_end = false;
+
+                for bc in chars.by_ref() {
+                    if bc == '`' {
+                        found_end = true;
+                        break;
+                    }
+                    code_text.push(bc);
+                }
+
+                if found_end {
+                    result.push_str(&format!("\\texttt{{{}}}", Self::escape_latex(&code_text)));
+                } else {
+                    result.push('`');
+                    result.push_str(&Self::escape_latex(&code_text));
                 }
             } else {
                 result.push_str(&match c {

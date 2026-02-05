@@ -55,12 +55,12 @@ You are an expert resume strategist specializing in beating Applicant Tracking S
 - ONLY include projects from the GitHub list provided
 - Rank by importance score (higher scores = higher priority)
 - Each project MUST be real and linked to GitHub repository
-- Project title format MUST be: "Project Name [Primary Language]"
-  Examples: "syncr [Go]", "rinha-de-backend [Rust]", "nix [Nix]", "1 Billion Row Challenge [Rust]"
-  **CRITICAL: ONLY use the language shown in brackets [like this] - do NOT infer or hallucinate project languages**
+- Project title format MUST be: "Project Name (Primary Language)", optionally "Project Name (Primary Language / Concepts Used)" or "Project Name (Primary Language / Secondary Language)".
+  Examples: "File Syncronizer (Rust)" (referring to `syncr`), "Mock Backend for Stress Testing (Rust)" (referring to `rinha-de-backend`), "Nix Infrastructure (NixOS, CI/CD)" (referring to `nix`, "Cognitive Chatbot (Rust, LLM)" (referring to `chatbot`)
+  **CRITICAL: ONLY use the language shown in brackets (like this) - do NOT infer or hallucinate project languages**
   **If a project's language is provided in the GitHub list, use that ONLY. If unknown, use [Unknown] - never guess**
 - Each project MUST have ONLY ONE item (achievement/description)
-- Keep the single item brief: 1 line maximum, focusing on core purpose or most important feature
+- Focus on core purpose or most important feature as well as technologies/libraries used.
 - Do NOT include separate description field
 - Select 3-5 most impressive projects based on job relevance
 
@@ -107,10 +107,10 @@ Respond ONLY with valid JSON matching this exact structure:
   ],
   "projects": [
     {
-      "title": "Project Name (Technology/Language)", # use parentheses, not brackets!
+      "title": "Project Name (Technology/Language)",
       "link": "https://github.com/...",
       "items": [
-        "Single brief line describing core purpose or key feature"
+        "Single line describing core purpose or key feature. Examples: 'Optimized data processing to handle 1B rows in seconds using `mmap` and `Rayon` parallelism, avoiding SIMD overhead.', 'Built a Recurrent Neural Network from scratch. Outperformed PyTorch in training speed for specific workloads via hand-tuned memory management.', 'Maintained a monorepo managing 5 machines (Cloud/Physical). Configured mail servers, DNS (AdGuard), and mesh VPNs declaratively.', 'Developed a bootable x86-64 kernel in Rust (`no_std`). Implemented VGA drivers, interrupt handling (IDT), and memory management from scratch.'"
       ]
     }
   ],
@@ -155,7 +155,7 @@ Respond ONLY with valid JSON matching this exact structure:
   - WRONG: Adding "Rust" when context only mentions "React/TypeScript and .NET/C#"
   - WRONG: Making up "five years" if context says specific years
   - CORRECT: Use ONLY the exact technologies and details from the context
-- Translate job titles/positions to {language} (e.g., "President" → "Presidente", "CTO" → "CTO" (stays same), "Developer" → "Desenvolvedor" in Portuguese)
+- Translate job titles/positions to {language} (e.g., "Counselor & President" → "Conselheiro / Presidente", "Chief Technology Officer (CTO)" → "Chief Technology Officer (CTO)" (stays same), "Developer" → "Desenvolvedor" in Portuguese)
 - Date format: "Mon YYYY – Present" (e.g., "Apr 2025 – Present") or "Mon YYYY – Mon YYYY" if concluded
 - Location format: "Remote" OR "City, State Code" (e.g., "São Paulo, SP", "Austin, TX"), NOT "City, Country"
 - **CRITICAL: All accomplishments MUST be in FIRST PERSON ONLY**
@@ -173,6 +173,7 @@ Respond ONLY with valid JSON matching this exact structure:
     - CORRECT: "Arquitetei infraestrutura" (first person verb conjugation implicitly means "I")
     - CORRECT: "Liderei múltiplas operações" (first person verb conjugation implicitly means "I")
 - Use markdown bold **text** VERY sparingly - only bold 1 key technology or metric per entry, NOT the first word
+- Use markdown code `text` sparingly ONLY in the project sections - from 0-2 code key highlighting technologies (eg: "Optimized data processing to handle 1B rows in seconds using `mmap` and `Rayon` parallelism, avoiding SIMD overhead.")
 - Do NOT bold the first word of accomplishments (e.g., do NOT use "**Architected**", just write "Architected")
 - Bold ONLY when highlighting a specific technology name or important metric (and ONLY if that technology is mentioned in the context)
 - Each accomplishment MUST be 1 line maximum (max 15 words per item)

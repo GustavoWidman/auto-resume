@@ -1,10 +1,29 @@
+use std::sync::Arc;
+
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use eyre::Result;
-use log::{debug, info};
+use log::{debug, info, warn};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
-use crate::models::github::Repository;
+use crate::models::github::{Repository, RepositoryLanguages};
+use crate::utils::cache;
 use crate::utils::config::Config;
+
+#[derive(Clone, Debug)]
+pub struct GitHubRepoData {
+    pub name: String,
+    pub url: String,
+    pub stargazers_count: u64,
+    pub forks_count: u64,
+    pub size: u64,
+    pub importance_score: u64,
+    pub languages: Option<RepositoryLanguages>,
+    pub created_at: String,
+    pub pushed_at: String,
+    pub readme: Option<String>,
+    pub commits: u64,
+}
 
 pub struct GitHubScraper {
     config: Config,
@@ -20,7 +39,13 @@ impl GitHubScraper {
     }
 
     pub async fn list_repositories(&self) -> Result<Vec<Repository>> {
-        self.list_repositories_internal().await.map(|mut repos| {
+        Ok(self
+            .list_repositories_internal()
+            .await?
+            .into_iter()
+            .filter(|repo| !repo.fork)
+            .collect())
+        .map(|mut repos: Vec<Repository>| {
             repos.sort_by_key(|b| std::cmp::Reverse(b.importance_score()));
             repos
         })
@@ -93,33 +118,116 @@ impl GitHubScraper {
 
         let response = req.send().await?;
 
-        // The total count is in the Link header's last page URL
+        let pattern = regex::Regex::new(
+            r#"<https://api\.github\.com/repositories/\d+/commits\?per_page=1&page=2>; rel="next", <https://api\.github\.com/repositories/\d+/commits\?per_page=1&page=(\d+)>; rel="last""#,
+        )?;
         if let Some(link_header) = response.headers().get("link")
-            && let Ok(link_str) = link_header.to_str()
-            && let Some(last_url) = link_str.split(',').find(|s| s.contains("rel=\"last\""))
-            && let Some(page_str) = last_url.split("page=").nth(1)
-            && let Ok(last_page) = page_str.split('>').next().unwrap_or("0").parse::<u64>()
+            && let Some(captures) = pattern.captures(link_header.to_str()?)
+            && let Some(last_page_match) = captures.get(1)
+            && let Ok(last_page) = last_page_match.as_str().parse::<u64>()
         {
             return Ok(last_page);
         }
 
-        // Fallback: return 0 if we can't determine
+        warn!("Could not determine commit count for repo: {}", repo.name);
+
         Ok(0)
     }
 
-    #[allow(dead_code)]
-    pub async fn scrape(&self) -> Result<()> {
-        let repos = self.list_repositories().await?;
-
-        for repo in repos {
-            info!("Repo: {}", repo.name);
-            if let Some(readme) = self.get_readme(&repo).await? {
-                info!("README:\n{}", readme);
-            } else {
-                info!("No README found.");
-            }
+    pub async fn get_languages(&self, repo: &Repository) -> Result<RepositoryLanguages> {
+        let mut req = self
+            .client
+            .get(format!("{}/languages", repo.url))
+            .header("User-Agent", "auto-resume-app");
+        if let Some(token) = &self.config.github.token {
+            req = req.header("Authorization", format!("token {}", token));
         }
 
-        Ok(())
+        let response = req.send().await?;
+
+        let languages: RepositoryLanguages = response.json().await?;
+
+        Ok(languages)
     }
+}
+
+pub async fn scrape_github_profile(config: &Config) -> Result<Vec<GitHubRepoData>> {
+    info!("scraping GitHub profile");
+
+    cache::init_cache()?;
+
+    let scraper = Arc::new(GitHubScraper::new(config.clone()));
+    let repos = scraper.list_repositories().await?;
+
+    if repos.is_empty() {
+        info!("no public repositories found on GitHub profile");
+        return Ok(Vec::new());
+    }
+
+    info!(
+        "fetching README and commit data for {} repositories (parallel)",
+        repos.len()
+    );
+
+    // Create concurrent tasks for fetching README and commits for each repo
+    let mut tasks = Vec::new();
+    for repo in repos.into_iter() {
+        let scraper_clone = Arc::clone(&scraper);
+        let task = tokio::spawn(async move {
+            // Check cache first for README
+            let readme = if let Some(cached) = cache::get_cached_readme(&repo.name) {
+                cached
+            } else {
+                match scraper_clone.get_readme(&repo).await {
+                    Ok(Some(content)) => {
+                        let _ = cache::cache_readme(&repo.name, &content);
+                        content
+                    }
+                    _ => String::new(),
+                }
+            };
+
+            let commits = scraper_clone.get_commit_count(&repo).await.unwrap_or(0);
+
+            let languages = scraper_clone.get_languages(&repo).await.ok();
+
+            (
+                repo,
+                if readme.is_empty() {
+                    None
+                } else {
+                    Some(readme)
+                },
+                commits,
+                languages,
+            )
+        });
+        tasks.push(task);
+    }
+
+    // Await all tasks and collect results in parallel using rayon
+    let mut completed_tasks = Vec::with_capacity(tasks.len());
+    for task in tasks {
+        completed_tasks.push(task.await?);
+    }
+
+    let result: Vec<GitHubRepoData> = completed_tasks
+        .into_par_iter()
+        .map(|(repo, readme, commits, languages)| GitHubRepoData {
+            name: repo.name.clone(),
+            url: repo.url.clone(),
+            stargazers_count: repo.stargazers_count,
+            forks_count: repo.forks_count,
+            size: repo.size,
+            importance_score: repo.importance_score(),
+            languages,
+            created_at: repo.created_at.clone(),
+            pushed_at: repo.pushed_at.clone(),
+            readme,
+            commits,
+        })
+        .collect();
+
+    info!("found {} repositories to analyze", result.len());
+    Ok(result)
 }

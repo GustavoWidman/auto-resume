@@ -55,7 +55,7 @@ pub struct Repository {
     owner: RepositoryOwner,
     html_url: String,
     description: Option<String>,
-    fork: bool,
+    pub fork: bool,
     pub url: String,
     forks_url: String,
     keys_url: String,
@@ -94,7 +94,7 @@ pub struct Repository {
     releases_url: String,
     deployments_url: String,
     pub created_at: String, // TODO: DateTime<Utc>
-    updated_at: String, // TODO: DateTime<Utc>
+    updated_at: String,     // TODO: DateTime<Utc>
     pub pushed_at: String,  // TODO: DateTime<Utc>
     git_url: String,
     ssh_url: String,
@@ -129,9 +129,32 @@ pub struct Repository {
     permissions: RepositoryPermissions,
 }
 
+#[derive(Clone, Debug)]
+pub struct RepositoryLanguages {
+    pub languages: Vec<(String, u64)>,
+    pub total_byte_count: u64,
+}
+
+impl<'de> Deserialize<'de> for RepositoryLanguages {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let map: std::collections::HashMap<String, u64> =
+            serde::Deserialize::deserialize(deserializer)?;
+        let languages: Vec<(String, u64)> = map.into_iter().collect();
+        let total_byte_count = languages.iter().map(|(_, count)| *count).sum();
+
+        Ok(RepositoryLanguages {
+            languages,
+            total_byte_count,
+        })
+    }
+}
+
 impl Repository {
     pub fn importance_score(&self) -> u64 {
-        if self.archived || self.fork {
+        if self.fork {
             return 0;
         }
 

@@ -4,11 +4,10 @@ use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+use crate::latex::assembler::ResumeLanguage;
+use crate::scraper::github::GitHubRepoData;
 use crate::scraper::job::JobDescription;
 use crate::utils::config::{ResumeConfig, ResumeItem};
-
-// Type alias for GitHub repository data: (name, url, stars, forks, size, importance_score, language, created_at, pushed_at, readme, commit_count)
-type GitHubRepoData = (String, String, u64, u64, u64, u64, Option<String>, String, String, Option<String>, u64);
 
 #[derive(Debug, Clone)]
 pub struct RankedRepository {
@@ -106,8 +105,6 @@ impl ResumeAgent {
             let request_body = json!({
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {
-                    "temperature": 0.3,
-                    "maxOutputTokens": 2048,
                     "responseMimeType": "application/json",
                     "responseJsonSchema": {
                         "type": "object",
@@ -189,19 +186,28 @@ impl ResumeAgent {
         github_repos: &[GitHubRepoData],
         job_description: &JobDescription,
     ) -> Result<Vec<RankedRepository>> {
-        info!("ranking repositories to help with selection");
         debug!("evaluating {} repositories", github_repos.len());
 
         let repos_list = github_repos
             .iter()
-            .map(|(name, url, stars, forks, _size, score, lang, created_at, pushed_at, readme, commits)| {
-                let lang_str = lang.as_deref().unwrap_or("Unknown");
-                let created_year = created_at.split('-').next().unwrap_or("????");
-                let pushed_year = pushed_at.split('-').next().unwrap_or("????");
-                let readme_indicator = if readme.is_some() { " [HAS_README]" } else { "" };
+            .map(|repo| {
+                let lang_str: String = repo.languages.as_ref().map(|langs|
+                    langs.languages
+                        .iter()
+                        .map(|(lang, byte_count)|
+                            format!("{} ({}%)",
+                                lang,
+                                ((( *byte_count as f64 / langs.total_byte_count as f64) * 10000.0).round()) / 100.0
+                            )
+                        )
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ).unwrap_or_else(|| "Unknown".to_string());
+
+                let readme_indicator = if repo.readme.is_some() { " [HAS_README]" } else { "" };
                 format!(
-                    "- {} [{}] (created: {}, last updated: {}, stars: {}, forks: {}, commits: {}, importance: {}){}  {}",
-                    name, lang_str, created_year, pushed_year, stars, forks, commits, score, readme_indicator, url
+                    "- {} [{}] (created: {}, last updated: {}, stars: {}, forks: {}, size: {}, commits: {}, importance: {}){}  {}",
+                    repo.name, lang_str, repo.created_at, repo.pushed_at, repo.stargazers_count, repo.forks_count, repo.size, repo.commits, repo.importance_score, readme_indicator, repo.url
                 )
             })
             .collect::<Vec<_>>()
@@ -230,10 +236,15 @@ impl ResumeAgent {
               ]\n\
             }}",
             job_description.title,
-            job_description.company.as_deref().unwrap_or("the target company"),
+            job_description
+                .company
+                .as_deref()
+                .unwrap_or("the target company"),
             job_description.description,
             repos_list
         );
+
+        debug!("ranking prompt length: {} characters", prompt.len());
 
         let client = reqwest::Client::new();
         let api_key = self.api_key.clone();
@@ -244,8 +255,6 @@ impl ResumeAgent {
             let request_body = json!({
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {
-                    "temperature": 0.7,
-                    "maxOutputTokens": 3000,
                     "responseMimeType": "application/json",
                     "responseJsonSchema": {
                         "type": "object",
@@ -280,7 +289,11 @@ impl ResumeAgent {
             let status = response.status();
             if !status.is_success() {
                 let error_body = response.text().await?;
-                return Err(eyre!("Repository ranking failed ({}): {}", status, error_body));
+                return Err(eyre!(
+                    "Repository ranking failed ({}): {}",
+                    status,
+                    error_body
+                ));
             }
 
             Ok(response)
@@ -301,8 +314,12 @@ impl ResumeAgent {
             .ok_or_else(|| eyre!("invalid ranking response structure"))?;
 
         let trimmed = ranked.trim();
-        let json_start = trimmed.find('{').ok_or_else(|| eyre!("no JSON in ranking response"))?;
-        let json_end = trimmed.rfind('}').ok_or_else(|| eyre!("malformed JSON in ranking response"))?;
+        let json_start = trimmed
+            .find('{')
+            .ok_or_else(|| eyre!("no JSON in ranking response"))?;
+        let json_end = trimmed
+            .rfind('}')
+            .ok_or_else(|| eyre!("malformed JSON in ranking response"))?;
         let json_str = &trimmed[json_start..=json_end];
 
         let parsed: serde_json::Value = serde_json::from_str(json_str).map_err(|e| {
@@ -336,7 +353,7 @@ impl ResumeAgent {
         resume_config: &ResumeConfig,
         job_description: &JobDescription,
         github_repos: Vec<GitHubRepoData>,
-        language: &str,
+        language: &ResumeLanguage,
     ) -> Result<LLMResumeOutput> {
         info!("generating resume content using LLM with structured output");
 
@@ -357,31 +374,33 @@ impl ResumeAgent {
         resume_config: &ResumeConfig,
         job_description: &JobDescription,
         github_repos: &[GitHubRepoData],
-        language: &str,
+        language: &ResumeLanguage,
     ) -> String {
         let repos_list = github_repos
             .iter()
-            .map(|(name, url, stars, forks, _size, score, lang, created_at, pushed_at, readme, commits)| {
-                let lang_str = lang.as_deref().unwrap_or("Unknown");
-                // Extract year from ISO date string (e.g., "2023-01-15T..." -> "2023")
-                let created_year = created_at.split('-').next().unwrap_or("????");
-                let pushed_year = pushed_at.split('-').next().unwrap_or("????");
+            .map(|repo| {
+                let lang_str: String = repo.languages.as_ref().map(|langs|
+                    langs.languages
+                        .iter()
+                        .map(|(lang, byte_count)|
+                            format!("{} ({}%)",
+                                lang,
+                                ((( *byte_count as f64 / langs.total_byte_count as f64) * 10000.0).round()) / 100.0
+                            )
+                        )
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ).unwrap_or_else(|| "Unknown".to_string());
 
-                let readme_snippet = if let Some(readme_content) = readme {
-                    // Show first 200 chars of README as snippet
-                    let snippet = if readme_content.len() > 200 {
-                        format!("{}...", &readme_content[..200])
-                    } else {
-                        readme_content.clone()
-                    };
-                    format!("\n  README: {}", snippet)
+                let readme_snippet = if let Some(readme_content) = repo.readme.as_ref() {
+                    format!("\n  README:\n```\n{}\n```", readme_content)
                 } else {
                     String::new()
                 };
 
                 format!(
-                    "- {} [{}] (created: {}, last updated: {}, stars: {}, forks: {}, commits: {}, importance: {}) - {}{}",
-                    name, lang_str, created_year, pushed_year, stars, forks, commits, score, url, readme_snippet
+                    "- {} [{}] (created: {}, last updated: {}, stars: {}, forks: {}, size: {}, commits: {}, importance: {}) - {}{}",
+                    repo.name, lang_str, repo.created_at, repo.pushed_at, repo.stargazers_count, repo.forks_count, repo.size, repo.commits, repo.importance_score, repo.url, readme_snippet
                 )
             })
             .collect::<Vec<_>>()
@@ -420,9 +439,8 @@ impl ResumeAgent {
             .replace(
                 "{language}",
                 match language {
-                    "en" => "English",
-                    "pt" => "Portuguese",
-                    _ => "English",
+                    ResumeLanguage::English => "English",
+                    ResumeLanguage::Portuguese => "Portuguese",
                 },
             )
     }
@@ -458,10 +476,6 @@ impl ResumeAgent {
                     ]
                 },
                 "generationConfig": {
-                    "temperature": 1.0,
-                    "topP": 0.95,
-                    "topK": 40,
-                    "maxOutputTokens": 4096,
                     "responseMimeType": "application/json",
                     "responseJsonSchema": {
                         "type": "object",
@@ -491,7 +505,7 @@ impl ResumeAgent {
                                     "properties": {
                                         "title": {
                                             "type": "string",
-                                            "description": "Project name in format: 'Project Name (Technology/Language)', use parentheses instead of brackets."
+                                            "description": "Project name in format: 'Project Name (Technology/Language)'"
                                         },
                                         "link": {
                                             "type": "string",
