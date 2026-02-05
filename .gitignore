@@ -1,6 +1,6 @@
 /target
 /config.toml
-*.tex
+/*.tex
 *.pdf
 /job.txt
 .readme-cache
