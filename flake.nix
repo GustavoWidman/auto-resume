@@ -46,8 +46,20 @@
                 );
               }
               {
-                name = "FONTCONFIG_FILE";
-                value = pkgs.makeFontsConf { fontDirectories = [ pkgs.tex-gyre ]; };
+                name = "CPATH";
+                value = pkgs.lib.makeSearchPath "include" (
+                  with pkgs;
+                  [
+                    graphite2.dev
+                    freetype.dev
+                    libpng.dev
+                    icu.dev
+                    harfbuzz.dev
+                    zlib.dev
+                    glib.dev
+                    cairo.dev
+                  ]
+                );
               }
             ];
             devshell = {
@@ -61,26 +73,9 @@
                 pkg-config
                 glib.dev
                 cairo.dev
-                tex-gyre
-                fontconfig
               ];
               startup = {
                 vars.text = ''
-                  export CPATH="${
-                    pkgs.lib.makeSearchPath "include" (
-                      with pkgs;
-                      [
-                        graphite2.dev
-                        freetype.dev
-                        libpng.dev
-                        icu.dev
-                        harfbuzz.dev
-                        zlib.dev
-                        glib.dev
-                        cairo.dev
-                      ]
-                    )
-                  }:$CPATH"
                   export LIBRARY_PATH="${
                     pkgs.lib.makeLibraryPath (
                       with pkgs;
