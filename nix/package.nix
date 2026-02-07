@@ -41,7 +41,7 @@
       );
     in
     {
-      checks.kemono-pinger = bin;
+      checks.auto-resume = bin;
 
       packages.default = bin;
 
